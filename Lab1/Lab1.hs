@@ -14,7 +14,8 @@ power n 0  = 1
 power n k  = n * power n (k-1)
 
 -- A ------------------------
--- stepsPower n k gives the number of steps that power n k takes to compute
+-- stepsPower n k gives the number of steps that
+-- power n k takes to compute
 
 stepsPower :: Integer -> Integer -> Integer
 stepsPower n k | k < 0 = error "power: negative argument"
@@ -23,21 +24,21 @@ stepsPower n k = k + 1
 
 
 -- B -------------------------
--- power1, using product
+-- power1 n k gives the power n^k using product
 
 power1 :: Integer -> Integer -> Integer
 power1 n k | k < 0 = error "power: negative argument"
 power1 n k = product [n | _ <- list]
              where list = [1..k]
 
--- power1, using replicate
+-- power1_2 n k gives the power n^k using replicate
 power1_2 :: Integer -> Integer -> Integer
 power1_2 n k | k < 0 = error "power: negative argument"
 power1_2 n k = product (replicate k' n)
                where k' = fromInteger k
 
 -- C -------------------------
--- power2
+-- power2 n k gives n^k
 
 power2 :: Integer -> Integer -> Integer
 power2 n k | k < 0 = error "power: negative argument"
