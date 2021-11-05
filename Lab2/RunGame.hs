@@ -29,7 +29,7 @@ runGame i =
 
 -- | Play until the guest player is bust or chooses to stop.
 gameLoop :: Interface -> Hand -> Hand -> IO ()
-gameLoop i deck guest = do 
+gameLoop i deck guest = do
      putStrLn $ "Your current score: " ++ displayHand i guest ++ "\n"
      if iGameOver i guest
        then finish i deck guest

@@ -29,7 +29,7 @@ data Suit = Hearts | Spades | Diamonds | Clubs
 -- deck of cards.
 data Hand = Empty | Add Card Hand
             deriving (Eq, Show)
-            
+
 -- | The size of a hand.
 size :: Num a => Hand -> a
 size Empty            = 0
@@ -38,7 +38,7 @@ size (Add card hand)  = 1 + size hand
 --------------------------------------------------------------------
 -- Functions below are to tell QuickCheck how to generate random cards
 -- We will see how to do this in week 4.
-           
+
 -- | Generate a random Card
 instance Arbitrary Card where
   arbitrary = Card <$> arbitrary <*> arbitrary
