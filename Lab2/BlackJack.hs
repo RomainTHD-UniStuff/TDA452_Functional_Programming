@@ -37,16 +37,16 @@ display (Add card hand) = displayCard card ++ " " ++ display hand
 
 -- A2
 
--- Card value, assuming aces having a value 11
-cardValue :: Card -> Integer
-cardValue (Card (Numeric n) _) = n
-cardValue (Card Ace         _) = 11
-cardValue (Card _           _) = 10
+-- Rank value, assuming aces having a value 11
+valueRank :: Rank -> Integer
+valueRank (Numeric n) = n
+valueRank Ace         = 11
+valueRank _           = 10
 
 -- Initial "basic" value of a hand, assuming aces having a value 11
 initialValue :: Hand -> Integer
 initialValue Empty           = 0
-initialValue (Add card hand) = cardValue card + initialValue hand
+initialValue (Add (Card rank _) hand) = valueRank rank + initialValue hand
 
 -- Number of aces in a hand
 numberOfAces :: Hand -> Integer
@@ -54,8 +54,8 @@ numberOfAces Empty                   = 0
 numberOfAces (Add (Card Ace _) hand) = numberOfAces hand + 1
 numberOfAces (Add (Card _   _) hand) = numberOfAces hand
 
--- Calculates the "true" value of a hand, by replacing 11-aces by 1-aces if
---  required, removing 10 to the value for each overflowing ace
+-- Calculates the "true" value of a hand, by replacing 11-aces by 1-aces if the
+--  current value is above 21, removing 10 to the value for each overflowing ace
 valueCalc :: Integer -> Integer -> Integer
 valueCalc value 0                 = value
 valueCalc value aces | value > 21 = valueCalc (value - 10) (aces - 1)
