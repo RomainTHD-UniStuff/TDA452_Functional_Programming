@@ -65,7 +65,27 @@ valueCalc value aces | value > 21 = valueCalc (value - 10) (aces - 1)
 value :: Hand -> Integer
 value hand = valueCalc (initialValue hand) (numberOfAces hand)
 
--- Tests
+-- A3
 
-handUnder21 = Add (Card (Numeric 8) Hearts) (Add (Card Ace Spades) Empty)
-handOver21  = Add (Card (Numeric 8) Hearts) (Add (Card Ace Spades) (Add (Card King Clubs) Empty))
+-- Player bust or not
+gameOver :: Hand -> Bool
+gameOver hand = value hand > 21
+
+-- A4
+
+-- Gives the winner of a game
+winner :: Hand -> Hand -> Player
+winner handGuest handBank | gameOver handGuest = Bank
+                          | gameOver handBank = Guest
+                          | value handGuest > value handBank = Guest
+                          | otherwise = Bank
+
+
+
+-- Tests
+-- TODO: Remove this
+
+handUnder21   = Add (Card (Numeric 8) Hearts) (Add (Card Ace Spades) Empty)
+handUnder21'  = Add (Card (Numeric 7) Hearts) (Add (Card Ace Spades) Empty)
+handOver21Ace = Add (Card (Numeric 8) Hearts) (Add (Card Ace Spades) (Add (Card King Clubs) Empty))
+handOver21    = Add (Card (Numeric 8) Hearts) (Add (Card Ace Spades) (Add (Card King Clubs) (Add (Card (Numeric 3) Clubs) Empty)))
