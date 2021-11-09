@@ -9,6 +9,18 @@ import Cards
 import RunGame
 import Test.QuickCheck
 
+-- A0
+
+sizeSteps :: [Integer]
+sizeSteps = [ size hand2
+            , size (Add (Card (Numeric 2) Hearts)
+                        (Add (Card Jack Spades) Empty))
+            , 1 + size (Add (Card Jack Spades) Empty)
+            , 2 + size Empty
+            ,2]
+  where hand2 = Add (Card (Numeric 2) Hearts)
+            (Add (Card Jack Spades) Empty)
+
 -- A1
 
 -- This function displays a suit
@@ -79,13 +91,3 @@ winner handGuest handBank | gameOver handGuest = Bank
                           | gameOver handBank = Guest
                           | value handGuest > value handBank = Guest
                           | otherwise = Bank
-
-
-
--- Tests
--- TODO: Remove this
-
-handUnder21   = Add (Card (Numeric 8) Hearts) (Add (Card Ace Spades) Empty)
-handUnder21'  = Add (Card (Numeric 7) Hearts) (Add (Card Ace Spades) Empty)
-handOver21Ace = Add (Card (Numeric 8) Hearts) (Add (Card Ace Spades) (Add (Card King Clubs) Empty))
-handOver21    = Add (Card (Numeric 8) Hearts) (Add (Card Ace Spades) (Add (Card King Clubs) (Add (Card (Numeric 3) Clubs) Empty)))
