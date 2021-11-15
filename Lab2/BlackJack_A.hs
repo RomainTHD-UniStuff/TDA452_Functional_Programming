@@ -4,7 +4,7 @@
    Lab group: 27
  -}
 
-module BlackJack where
+module BlackJack_A where
 import Cards
 import RunGame
 import Test.QuickCheck
