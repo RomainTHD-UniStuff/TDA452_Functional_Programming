@@ -3,7 +3,7 @@ module Sudoku where
 import Test.QuickCheck
 import Data.Maybe
 import Data.List(group, sort)
-import Data.Char(digitToInt)
+import Data.Char(intToDigit, digitToInt)
 
 ------------------------------------------------------------------------------
 
@@ -47,9 +47,10 @@ allBlankSudoku = Sudoku [row | _ <- [1..9]]
 -- | isSudoku sud checks if sud is really a valid representation of a sudoku
 -- puzzle
 isSudoku :: Sudoku -> Bool
-isSudoku (Sudoku rows) = length rows == 9 && all ((== 9) . length) rows && all checkRow rows
-    where checkRow row = all isValidDigit row
-          isValidDigit n = isNothing n || (n >= Just 1 && n <= Just 9)
+isSudoku (Sudoku rows) = length rows == 9 &&
+                          all ((== 9) . length) rows &&
+                          all (all isValidDigit) rows
+    where isValidDigit n = isNothing n || (n >= Just 1 && n <= Just 9)
 
 -- * A3
 
@@ -72,7 +73,16 @@ printSudoku (Sudoku rows) = mapM_ putRowLn rows
         putCol Nothing = putStr "."
         putCol (Just n) = putStr $ show n
 
-  -- TODO: use unlines
+printSudoku' :: Sudoku -> IO ()
+printSudoku' (Sudoku rows) = mapM_ putRowLn rows
+  where putRowLn row = putStrLn (map toChar row)
+        toChar Nothing = '.'
+        toChar (Just n) = intToDigit n
+
+printSudoku'' :: Sudoku -> IO ()
+printSudoku'' (Sudoku rows) = putStr $ unlines $ map (map toChar) rows
+  where toChar Nothing = '.'
+        toChar (Just n) = intToDigit n
 
 -- * B2
 
@@ -95,7 +105,6 @@ readSudoku filePath = do
 cell :: Gen Cell
 cell = elements $ [Just n | n <- [1..9]] ++ [Nothing]
 
-
 -- * C2
 
 -- | an instance for generating Arbitrary Sudokus
@@ -107,7 +116,7 @@ instance Arbitrary Sudoku where
 -- * C3
 
 prop_Sudoku :: Sudoku -> Bool
-prop_Sudoku sudoku = isSudoku sudoku
+prop_Sudoku = isSudoku
 
 ------------------------------------------------------------------------------
 
@@ -120,13 +129,14 @@ isOkayBlock :: Block -> Bool
 isOkayBlock block = length justBlock == length (group $ sort justBlock) 
   where justBlock = filter isJust block
 
-
 -- * D2
 
 blocks :: Sudoku -> [Block]
 blocks (Sudoku rows) = rows ++ generateCols ++ generateBlocks
-    where generateCols = [map (getCell c) rows | c <- [1..9]]
-          getCell c row = head (drop (c-1) row)
+    where 
+          -- generateCols = [map (getCell c) rows | c <- [1..9]]
+          -- getCell c row = head (drop (c-1) row)
+          generateCols = [map (!! (c-1)) rows | c <- [1..9]]
           generateBlocks = rows
 
 prop_blocks_lengths :: Sudoku -> Bool
