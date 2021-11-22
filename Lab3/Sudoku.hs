@@ -2,7 +2,7 @@ module Sudoku where
 
 import Test.QuickCheck
 import Data.Maybe
-import Data.List(group, sort)
+import Data.List(group, sort, nub, transpose)
 import Data.Char(intToDigit, digitToInt)
 
 ------------------------------------------------------------------------------
@@ -41,6 +41,9 @@ example =
 allBlankSudoku :: Sudoku
 allBlankSudoku = Sudoku [row | _ <- [1..9]]
   where row = [Nothing | _ <- [1..9]]
+
+allBlankSudoku' :: Sudoku
+allBlankSudoku' = Sudoku $ replicate 9 $ replicate 9 Nothing
 
 -- * A2
 
@@ -129,14 +132,19 @@ isOkayBlock :: Block -> Bool
 isOkayBlock block = length justBlock == length (group $ sort justBlock) 
   where justBlock = filter isJust block
 
+isOkayBlock' :: Block -> Bool
+isOkayBlock' block = length justBlock == length (nub justBlock) 
+  where justBlock = filter isJust block
+
 -- * D2
 
 blocks :: Sudoku -> [Block]
 blocks (Sudoku rows) = rows ++ generateCols ++ generateBlocks
     where 
-          -- generateCols = [map (getCell c) rows | c <- [1..9]]
-          -- getCell c row = head (drop (c-1) row)
-          generateCols = [map (!! (c-1)) rows | c <- [1..9]]
+          generateCols = [map (getCell c) rows | c <- [1..9]]
+          getCell c row = head (drop (c-1) row)
+          generateCols' = [map (!! (c-1)) rows | c <- [1..9]]
+          generateCols'' = transpose rows
           generateBlocks = rows
 
 prop_blocks_lengths :: Sudoku -> Bool
