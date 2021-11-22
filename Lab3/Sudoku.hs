@@ -2,6 +2,8 @@ module Sudoku where
 
 import Test.QuickCheck
 import Data.Maybe
+import Data.List(group, sort)
+import Data.Char(digitToInt)
 
 ------------------------------------------------------------------------------
 
@@ -45,22 +47,16 @@ allBlankSudoku = Sudoku [row | _ <- [1..9]]
 -- | isSudoku sud checks if sud is really a valid representation of a sudoku
 -- puzzle
 isSudoku :: Sudoku -> Bool
-isSudoku (Sudoku rows) = length rows == 9 && checkRows rows
-
-checkRows :: [Row] -> Bool
-checkRows [] = True
-checkRows (r:rs) = length r == 9 && checkDigits r && checkRows rs
-
-checkDigits :: Row -> Bool
-checkDigits [] = True
-checkDigits (n:ns) = (isNothing n || (n>= Just 1 && n<= Just 9)) && checkDigits ns
+isSudoku (Sudoku rows) = length rows == 9 && all ((== 9) . length) rows && all checkRow rows
+    where checkRow row = all isValidDigit row
+          isValidDigit n = isNothing n || (n >= Just 1 && n <= Just 9)
 
 -- * A3
 
 -- | isFilled sud checks if sud is completely filled in,
 -- i.e. there are no blanks
 isFilled :: Sudoku -> Bool
-isFilled = undefined
+isFilled (Sudoku rows) = all (all isJust) rows
 
 ------------------------------------------------------------------------------
 
@@ -69,37 +65,49 @@ isFilled = undefined
 -- | printSudoku sud prints a nice representation of the sudoku sud on
 -- the screen
 printSudoku :: Sudoku -> IO ()
-printSudoku = undefined
+printSudoku (Sudoku rows) = mapM_ putRowLn rows
+  where putRowLn row = do
+            mapM_ putCol row
+            putStrLn ""
+        putCol Nothing = putStr "."
+        putCol (Just n) = putStr $ show n
+
+  -- TODO: use unlines
 
 -- * B2
 
 -- | readSudoku file reads from the file, and either delivers it, or stops
 -- if the file did not contain a sudoku
 readSudoku :: FilePath -> IO Sudoku
-readSudoku = undefined
+readSudoku filePath = do
+  content <- readFile filePath
+  let fromChar c | c == '.' = Nothing
+                 | c >= '1' && c <= '9' = Just (digitToInt c)
+                 | otherwise = error "Invalid digit"
+  let sudoku = Sudoku $ map (map fromChar) (lines content)
+  if not (isSudoku sudoku) then error "Not a sudoku" else return sudoku
 
 ------------------------------------------------------------------------------
 
 -- * C1
 
 -- | cell generates an arbitrary cell in a Sudoku
-cell :: Gen (Cell)
-cell = undefined
+cell :: Gen Cell
+cell = elements $ [Just n | n <- [1..9]] ++ [Nothing]
 
 
 -- * C2
 
 -- | an instance for generating Arbitrary Sudokus
 instance Arbitrary Sudoku where
-  arbitrary = undefined
-
- -- hint: get to know the QuickCheck function vectorOf
+  arbitrary = do    
+      content <- vectorOf 9 $ vectorOf 9 cell
+      return $ Sudoku content
 
 -- * C3
 
 prop_Sudoku :: Sudoku -> Bool
-prop_Sudoku = undefined
-  -- hint: this definition is simple!
+prop_Sudoku sudoku = isSudoku sudoku
 
 ------------------------------------------------------------------------------
 
@@ -109,13 +117,17 @@ type Block = [Cell] -- a Row is also a Cell
 -- * D1
 
 isOkayBlock :: Block -> Bool
-isOkayBlock = undefined
+isOkayBlock block = length justBlock == length (group $ sort justBlock) 
+  where justBlock = filter isJust block
 
 
 -- * D2
 
 blocks :: Sudoku -> [Block]
-blocks = undefined
+blocks (Sudoku rows) = rows ++ generateCols ++ generateBlocks
+    where generateCols = [map (getCell c) rows | c <- [1..9]]
+          getCell c row = head (drop (c-1) row)
+          generateBlocks = rows
 
 prop_blocks_lengths :: Sudoku -> Bool
 prop_blocks_lengths = undefined
