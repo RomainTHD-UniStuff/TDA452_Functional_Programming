@@ -1,6 +1,7 @@
 module Sudoku where
 
 import Test.QuickCheck
+import Data.Maybe
 
 ------------------------------------------------------------------------------
 
@@ -8,7 +9,7 @@ import Test.QuickCheck
 type Cell = Maybe Int -- a single cell
 type Row  = [Cell]    -- a row is a list of cells
 
-data Sudoku = Sudoku [Row] 
+data Sudoku = Sudoku [Row]
  deriving ( Show, Eq )
 
 rows :: Sudoku -> [Row]
@@ -36,23 +37,23 @@ example =
 
 -- | allBlankSudoku is a sudoku with just blanks
 allBlankSudoku :: Sudoku
-allBlankSudoku = Sudoku [row | x <- [1..9]]
-  where row = [Nothing | x <- [1..9]]  
+allBlankSudoku = Sudoku [row | _ <- [1..9]]
+  where row = [Nothing | _ <- [1..9]]
 
 -- * A2
 
 -- | isSudoku sud checks if sud is really a valid representation of a sudoku
 -- puzzle
 isSudoku :: Sudoku -> Bool
-isSudoku (Sudoku rows) = (length rows) == 9 && checkRows rows
+isSudoku (Sudoku rows) = length rows == 9 && checkRows rows
 
 checkRows :: [Row] -> Bool
 checkRows [] = True
-checkRows (r:rs) = (length r) == 9 && checkDigits r && checkRows rs
+checkRows (r:rs) = length r == 9 && checkDigits r && checkRows rs
 
 checkDigits :: Row -> Bool
 checkDigits [] = True
-checkDigits (n:ns) = ((n == Nothing) || (n>= (Just 1) && n<= (Just 9))) && checkDigits ns
+checkDigits (n:ns) = (isNothing n || (n>= Just 1 && n<= Just 9)) && checkDigits ns
 
 -- * A3
 
@@ -93,13 +94,13 @@ instance Arbitrary Sudoku where
   arbitrary = undefined
 
  -- hint: get to know the QuickCheck function vectorOf
- 
+
 -- * C3
 
 prop_Sudoku :: Sudoku -> Bool
 prop_Sudoku = undefined
   -- hint: this definition is simple!
-  
+
 ------------------------------------------------------------------------------
 
 type Block = [Cell] -- a Row is also a Cell
