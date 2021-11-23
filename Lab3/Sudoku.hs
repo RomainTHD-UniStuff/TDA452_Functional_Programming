@@ -2,7 +2,7 @@ module Sudoku where
 
 import Test.QuickCheck
 import Data.Maybe
-import Data.List(group, sort, nub, transpose)
+import Data.List(nub, transpose)
 import Data.Char(intToDigit, digitToInt)
 
 ------------------------------------------------------------------------------
@@ -35,15 +35,14 @@ example =
     n = Nothing
     j = Just
 
+
+-- (map (chunksOf' 3) (map transpose (chunksOf' 3 (rows example)))) !! 0
+
 -- * A1
 
 -- | allBlankSudoku is a sudoku with just blanks
 allBlankSudoku :: Sudoku
-allBlankSudoku = Sudoku [row | _ <- [1..9]]
-  where row = [Nothing | _ <- [1..9]]
-
-allBlankSudoku' :: Sudoku
-allBlankSudoku' = Sudoku $ replicate 9 $ replicate 9 Nothing
+allBlankSudoku = Sudoku $ replicate 9 $ replicate 9 Nothing
 
 -- * A2
 
@@ -69,21 +68,7 @@ isFilled (Sudoku rows) = all (all isJust) rows
 -- | printSudoku sud prints a nice representation of the sudoku sud on
 -- the screen
 printSudoku :: Sudoku -> IO ()
-printSudoku (Sudoku rows) = mapM_ putRowLn rows
-  where putRowLn row = do
-            mapM_ putCol row
-            putStrLn ""
-        putCol Nothing = putStr "."
-        putCol (Just n) = putStr $ show n
-
-printSudoku' :: Sudoku -> IO ()
-printSudoku' (Sudoku rows) = mapM_ putRowLn rows
-  where putRowLn row = putStrLn (map toChar row)
-        toChar Nothing = '.'
-        toChar (Just n) = intToDigit n
-
-printSudoku'' :: Sudoku -> IO ()
-printSudoku'' (Sudoku rows) = putStr $ unlines $ map (map toChar) rows
+printSudoku (Sudoku rows) = putStr $ unlines $ map (map toChar) rows
   where toChar Nothing = '.'
         toChar (Just n) = intToDigit n
 
@@ -127,33 +112,32 @@ type Block = [Cell] -- a Row is also a Cell
 
 
 -- * D1
-
 isOkayBlock :: Block -> Bool
-isOkayBlock block = length justBlock == length (group $ sort justBlock) 
-  where justBlock = filter isJust block
-
-isOkayBlock' :: Block -> Bool
-isOkayBlock' block = length justBlock == length (nub justBlock) 
+isOkayBlock block = length justBlock == length (nub justBlock) 
   where justBlock = filter isJust block
 
 -- * D2
 
 blocks :: Sudoku -> [Block]
-blocks (Sudoku rows) = rows ++ generateCols ++ generateBlocks
-    where 
-          generateCols = [map (getCell c) rows | c <- [1..9]]
-          getCell c row = head (drop (c-1) row)
-          generateCols' = [map (!! (c-1)) rows | c <- [1..9]]
-          generateCols'' = transpose rows
-          generateBlocks = rows
+blocks (Sudoku rows) = rows ++ transpose rows ++ generateBlocks rows
+
+generateBlocks :: [Row] -> [Block]
+generateBlocks rows = concatMap (map concat . chunksOf' 3 . transpose) (chunksOf' 3 rows)
+
+chunksOf' :: Int -> [a] -> [[a]]
+chunksOf' _ [] = []
+chunksOf' n list
+  | n > 0 = take n list : chunksOf' n (drop n list)
+  | otherwise = error "Invalid chunk size"
 
 prop_blocks_lengths :: Sudoku -> Bool
-prop_blocks_lengths = undefined
+prop_blocks_lengths s = (3*9 == length s_blocks) && all ((9 ==) . length) s_blocks
+  where s_blocks = blocks s
 
 -- * D3
 
 isOkay :: Sudoku -> Bool
-isOkay = undefined
+isOkay s = all isOkayBlock (blocks s)
 
 
 ---- Part A ends here --------------------------------------------------------
