@@ -35,9 +35,6 @@ example =
     n = Nothing
     j = Just
 
-
--- (map (chunksOf' 3) (map transpose (chunksOf' 3 (rows example)))) !! 0
-
 -- * A1
 
 -- | allBlankSudoku is a sudoku with just blanks
@@ -97,7 +94,7 @@ cell = elements $ [Just n | n <- [1..9]] ++ [Nothing]
 
 -- | an instance for generating Arbitrary Sudokus
 instance Arbitrary Sudoku where
-  arbitrary = do    
+  arbitrary = do
       content <- vectorOf 9 $ vectorOf 9 cell
       return $ Sudoku content
 
@@ -112,30 +109,37 @@ type Block = [Cell] -- a Row is also a Cell
 
 
 -- * D1
+
+-- Is a block valid or not
 isOkayBlock :: Block -> Bool
-isOkayBlock block = length justBlock == length (nub justBlock) 
+isOkayBlock block = length justBlock == length (nub justBlock)
   where justBlock = filter isJust block
 
 -- * D2
 
+-- Generate all blocks, i.e. all rows, columns and 3x3 blocks
 blocks :: Sudoku -> [Block]
 blocks (Sudoku rows) = rows ++ transpose rows ++ generateBlocks rows
 
+-- Generate all 3x3 blocks
 generateBlocks :: [Row] -> [Block]
 generateBlocks rows = concatMap (map concat . chunksOf' 3 . transpose) (chunksOf' 3 rows)
 
+-- Our own implementation of chunksOf, divides a list in chunks of at most n elements
 chunksOf' :: Int -> [a] -> [[a]]
 chunksOf' _ [] = []
 chunksOf' n list
   | n > 0 = take n list : chunksOf' n (drop n list)
   | otherwise = error "Invalid chunk size"
 
+-- Property for quickCheck
 prop_blocks_lengths :: Sudoku -> Bool
 prop_blocks_lengths s = (3*9 == length s_blocks) && all ((9 ==) . length) s_blocks
   where s_blocks = blocks s
 
 -- * D3
 
+-- If a sudoku is valid or not
 isOkay :: Sudoku -> Bool
 isOkay s = all isOkayBlock (blocks s)
 
