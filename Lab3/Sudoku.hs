@@ -1,3 +1,9 @@
+{- Lab 3
+   Date: 22/11/2021
+   Authors: Fanny Rouvel - Romain Theodet
+   Lab group: 27
+ -}
+
 module Sudoku where
 
 import Test.QuickCheck
@@ -145,50 +151,3 @@ isOkay s = all isOkayBlock (blocks s)
 
 
 ---- Part A ends here --------------------------------------------------------
-------------------------------------------------------------------------------
----- Part B starts here ------------------------------------------------------
-
-
--- | Positions are pairs (row,column),
--- (0,0) is top left corner, (8,8) is bottom left corner
-type Pos = (Int,Int)
-
--- * E1
-
-blanks :: Sudoku -> [Pos]
-blanks = undefined
-
---prop_blanks_allBlanks :: ...
---prop_blanks_allBlanks =
-
-
--- * E2
-
-(!!=) :: [a] -> (Int,a) -> [a]
-xs !!= (i,y) = undefined
-
---prop_bangBangEquals_correct :: ...
---prop_bangBangEquals_correct =
-
-
--- * E3
-
-update :: Sudoku -> Pos -> Cell -> Sudoku
-update = undefined
-
---prop_update_updated :: ...
---prop_update_updated =
-
-
-------------------------------------------------------------------------------
-
--- * F1
-
-
--- * F2
-
-
--- * F3
-
-
--- * F4
