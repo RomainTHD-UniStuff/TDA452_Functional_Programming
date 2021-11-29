@@ -94,7 +94,11 @@ readSudoku filePath = do
 
 -- | cell generates an arbitrary cell in a Sudoku
 cell :: Gen Cell
-cell = elements $ [Just n | n <- [1..9]] ++ [Nothing]
+cell = frequency [(1, rJust), (9, rNothing)]
+ where rJust = do n <- choose(1,9)
+                  return $ Just n
+       rNothing = do return Nothing
+
 
 -- * C2
 
