@@ -1,5 +1,5 @@
 {- Lab 3
-   Date: 22/11/2021
+   Date: 29/11/2021
    Authors: Fanny Rouvel - Romain Theodet
    Lab group: 27
  -}
@@ -52,7 +52,7 @@ prop_update_updated :: Sudoku -> Pos -> Cell -> Bool
 prop_update_updated s (row, col) cell | row < 0 || row > 8 || col < 0 || col > 8 = True
                                       | otherwise = and [check r c | r <- [0..8], c <- [0..8]]
   where (Sudoku updated_rows) = update s (row, col) cell
-        check r c | r == row && c == col = cellUpdated == cell                                       
+        check r c | r == row && c == col = cellUpdated == cell
                   | otherwise = cellOrig == cellUpdated
           where cellOrig = (rows s) !! r !! c
                 cellUpdated = updated_rows !! r !! c
