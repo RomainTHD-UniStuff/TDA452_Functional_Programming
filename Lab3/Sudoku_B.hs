@@ -46,11 +46,12 @@ update (Sudoku rows) (row, col) cell = Sudoku $ rows !!= (row, newRow)
   where newRow = (rows !! row) !!= (col, cell)
 
 prop_update_updated :: Sudoku -> Pos -> Cell -> Bool
-prop_update_updated s (row, col) cell | row < 0 || row > 8 || col < 0 || col > 8 = True
-                                      | otherwise = and [check r c | r <- [0..8], c <- [0..8]]
-  where (Sudoku updated_rows) = update s (row, col) cell
+prop_update_updated s (x, y) cell = and [check r c | r <- [0..8], c <- [0..8]]
+  where row = x `mod` 9
+        col = y `mod` 9
+        (Sudoku updated_rows) = update s (row, col) cell
         check r c | r == row && c == col = cellUpdated == cell
-                  | otherwise            = cellOrig    == cellUpdated
+                  | otherwise            = cellUpdated == cellOrig
           where cellOrig = rows s !! r !! c
                 cellUpdated = updated_rows !! r !! c
 
