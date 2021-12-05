@@ -33,12 +33,10 @@ prop_blanks_allBlanks = and $ zipWith (==) (blanks allBlankSudoku) [(r, c) | r <
                | n < length xs = take n xs ++ x:drop (n+1) xs
                | otherwise     = error "Index out of bounds"
 
-prop_bangBangEquals_correct :: [Char] -> (Int, Char) -> Bool
-prop_bangBangEquals_correct xs (n, x) | n < 0         = True
-                                      | n < length xs = assertLength && assertResult
-                                      | otherwise     = True
+prop_bangBangEquals_correct :: [Char] -> (Int, Char) -> Property
+prop_bangBangEquals_correct xs (n, x) = (n >= 0 && n < length xs) ==> assertLength && assertResult
   where ownResult = xs !!= (n,x)
-        assertResult = (take n xs ++ [x] ++ drop (n + 1) xs) == ownResult
+        assertResult = (take n xs ++ x:drop (n + 1) xs) == ownResult
         assertLength = length xs == length ownResult
 
 -- * E3
