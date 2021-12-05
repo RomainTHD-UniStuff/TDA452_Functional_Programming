@@ -7,7 +7,7 @@
 module Sudoku_B where
 
 import Test.QuickCheck
-import Sudoku
+import Sudoku_A
 import Data.Maybe
 
 ---- Part B starts here ------------------------------------------------------
@@ -29,10 +29,9 @@ prop_blanks_allBlanks = and $ zipWith (==) (blanks allBlankSudoku) [(r, c) | r <
 -- * E2
 
 (!!=) :: [a] -> (Int,a) -> [a]
-xs !!= (n,x) | n < 0     = error "Negative index"
-             | n <= last = [if n == i then x else xs !! i | i <- [0..last]]
-             | otherwise = error "Index out of bounds"
-  where last = length xs - 1
+(!!=) xs (n,x) | n < 0         = error "Negative index"
+               | n < length xs = take n xs ++ x:drop (n+1) xs
+               | otherwise     = error "Index out of bounds"
 
 prop_bangBangEquals_correct :: [Char] -> (Int, Char) -> Bool
 prop_bangBangEquals_correct xs (n, x) | n < 0         = True
