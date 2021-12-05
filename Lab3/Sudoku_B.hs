@@ -90,5 +90,5 @@ isSolutionOf sol orig | not(isSudoku sol) || not(isOkay sol) || not(null $ blank
 -- * F4
 
 prop_SolveSound :: Sudoku -> Property
-prop_SolveSound s = not (isNothing sol) ==> property (isSolutionOf (fromJust sol) s)
+prop_SolveSound s = isJust sol ==> property (isSolutionOf (fromJust sol) s)
   where sol = solve s
