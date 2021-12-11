@@ -1,217 +1,230 @@
 module Expr where
 
-  import Prelude hiding (sin, cos, pi)
-  import qualified Prelude as P (sin, cos, pi)
-  import Parsing
-  import Data.Maybe (fromJust)
-  import Data.Char (isSpace)
+import Prelude hiding (sin, cos, pi)
+import qualified Prelude as P (sin, cos, pi)
+import Parsing
+import Data.Maybe (fromJust)
+import Data.Char (isSpace)
 
-  import Test.QuickCheck
+import Test.QuickCheck
 
-  -- Part A
+-- Part A
 
-  -- Interface
+-- Interface
 
-  x :: Expr
-  num :: Double -> Expr
-  add, mul :: Expr -> Expr -> Expr
-  sin, cos :: Expr -> Expr
+x :: Expr
+num :: Double -> Expr
+add, mul :: Expr -> Expr -> Expr
+sin, cos :: Expr -> Expr
 
-  -- Expr data structure
+-- Expr data structure
 
-  data Func = Sin
-            | Cos
+data Func = Sin
+          | Cos
+          deriving (Eq)
+
+data Op = Add
+        | Mul
     deriving (Eq)
 
-  data Op = Add
-          | Mul
-    deriving (Eq)
+data Expr = Num Double
+          | X
+          | Op Op Expr Expr
+          | Func Func Expr
+          deriving (Eq)
 
-  data Expr = Num Double
-            | X
-            | Op Op Expr Expr
-            | Func Func Expr
-    deriving (Eq)
+x = X
+num = Num
+add = Op Add
+mul = Op Mul
+sin = Func Sin
+cos = Func Cos
 
-  x = X
-  num = Num
-  add = Op Add
-  mul = Op Mul
-  sin = Func Sin
-  cos = Func Cos
+pi :: Expr
+pi = Num P.pi
 
-  pi :: Expr
-  pi = Num P.pi
+pi_2 :: Expr
+pi_2 = Num (P.pi / 2)
 
-  pi_2 :: Expr
-  pi_2 = Num (P.pi / 2)
+pi2 :: Expr
+pi2 = Num (P.pi * 2)
 
-  pi2 :: Expr
-  pi2 = Num (P.pi * 2)
+size :: Expr -> Int
+size (Num _)      = 0
+size X            = 0
+size (Op _ e1 e2) = 1 + size e1 + size e2
+size (Func _ e)   = 1 + size e
 
-  size :: Expr -> Int
-  size (Num _)      = 0
-  size X            = 0
-  size (Op _ e1 e2) = 1 + size e1 + size e2
-  size (Func _ e)   = 1 + size e
+-- Part B
 
-  -- Part B
-
-  instance Show Expr where
+instance Show Expr where
     show = showExpr
 
-  showExpr :: Expr -> String
-  showExpr (Num n)        = show n
-  showExpr X              = "x"
-  showExpr (Op Add e1 e2) = showExpr e1 ++ " + " ++ showExpr e2
-  showExpr (Op Mul e1 e2) = showFactor e1 ++ " * " ++ showFactor e2
-  showExpr (Func Sin e)   = "sin " ++ showFactor e
-  showExpr (Func Cos e)   = "cos " ++ showFactor e
+showExpr :: Expr -> String
+showExpr (Num n)        = show n
+showExpr X              = "x"
+showExpr (Op Add e1 e2) = showExpr e1 ++ " + " ++ showExpr e2
+showExpr (Op Mul e1 e2) = showFactor e1 ++ " * " ++ showFactor e2
+showExpr (Func Sin e)   = "sin " ++ showFactor e
+showExpr (Func Cos e)   = "cos " ++ showFactor e
 
-  showFactor :: Expr -> String
-  showFactor (Op op e1 e2) = "(" ++ showExpr (Op op e1 e2) ++ ")"
-  showFactor e             = showExpr e
+showFactor :: Expr -> String
+showFactor (Op Mul e1 e2) = showFactor e1 ++ " * " ++ showFactor e2
+showFactor (Num n)        | n == fromInteger (round n) = show $ round n
+                          | otherwise = show n
+showFactor (Func Sin (Op op e1 e2)) = "sin(" ++ showExpr (Op op e1 e2) ++ ")"
+showFactor (Func Sin e)   = "sin " ++ showExpr e
+showFactor (Func Cos (Op op e1 e2)) = "cos(" ++ showExpr (Op op e1 e2) ++ ")"
+showFactor (Func Cos e)   = "cos " ++ showExpr e
+showFactor X              = "x"
+showFactor e              = "(" ++ showExpr e ++ ")"
 
-  -- Part C
+-- Part C
 
-  evalOp :: Op -> Double -> Double -> Double
-  evalOp Add = (+)
-  evalOp Mul = (*)
+evalOp :: Op -> Double -> Double -> Double
+evalOp Add = (+)
+evalOp Mul = (*)
 
-  evalFunc :: Func -> Double -> Double
-  evalFunc Sin = P.sin
-  evalFunc Cos = P.cos
+evalFunc :: Func -> Double -> Double
+evalFunc Sin = P.sin
+evalFunc Cos = P.cos
 
-  eval :: Expr -> Double -> Double
-  eval (Num n) _       = n
-  eval X y             = y
-  eval (Op op e1 e2) y = evalOp op (eval e1 y) (eval e2 y)
-  eval (Func f e) y    = evalFunc f $ eval e y
+eval :: Expr -> Double -> Double
+eval (Num n) _       = n
+eval X y             = y
+eval (Op op e1 e2) y = evalOp op (eval e1 y) (eval e2 y)
+eval (Func f e) y    = evalFunc f $ eval e y
 
-  -- Part D
+-- Part D
 
-  expr, term, factor :: Parser Expr
+expr, term, factor :: Parser Expr
 
-  expr   = foldl1 (Op Add) <$> chain term (char '+')
-  term   = foldl1 (Op Mul) <$> chain factor (char '*')
-  factor = Num <$> readsP
-           <|> char 'x' *> return X
-           <|> char '(' *> expr <* char ')'
-           <|> Func Sin <$> (satStr "sin" *> factor)
-           <|> Func Cos <$> (satStr "cos" *> factor)
+expr   = foldl1 (Op Add) <$> chain term (char '+')
+term   = foldl1 (Op Mul) <$> chain factor (char '*')
+factor = Num <$> readsP
+        <|> char 'x' *> return X
+        <|> char '(' *> expr <* char ')'
+        <|> Func Sin <$> (satStr "sin" *> factor)
+        <|> Func Cos <$> (satStr "cos" *> factor)
 
-  satStr :: String -> Parser Char
-  satStr s = foldr1 (<*) (char <$> s)
+satStr :: String -> Parser Char
+satStr s = foldr1 (<*) (char <$> s)
 
-  readExpr :: String -> Maybe Expr
-  readExpr s = case parse expr s' of
-    Just(e, "") -> Just e
-    _           -> Nothing
+readExpr :: String -> Maybe Expr
+readExpr s = case parse expr s' of
+        Just(e, "") -> Just e
+        _           -> Nothing
     where s' = filter (not . isSpace) s
 
-  ---- Part E
+---- Part E
 
-  instance Arbitrary Expr where
+instance Arbitrary Expr where
     arbitrary = sized arbExpr
 
-  prop_ShowReadExpr :: Expr -> Bool
-  prop_ShowReadExpr e = (assoc e ==) . assoc <$> fromJust $ readExpr (showExpr e)
+prop_ShowReadExpr :: Expr -> Bool
+prop_ShowReadExpr e = (assoc e ==) . assoc <$> fromJust $ readExpr (showExpr e)
 
-  assoc :: Expr -> Expr
-  assoc (Op Add (Op Add e1 e2) e3) = assoc (Op Add e1 (Op Add e2 e3))
-  assoc (Op Add e1 e2)             = Op Add (assoc e1) (assoc e2)
-  assoc (Op Mul e1 e2)             = Op Mul (assoc e1) (assoc e2)
-  assoc (Func f e)                 = Func f (assoc e)
-  assoc e                          = e
+assoc :: Expr -> Expr
+assoc (Op Add (Op Add e1 e2) e3) = assoc (Op Add e1 (Op Add e2 e3))
+assoc (Op Add e1 e2)             = Op Add (assoc e1) (assoc e2)
+assoc (Op Mul e1 e2)             = Op Mul (assoc e1) (assoc e2)
+assoc (Func f e)                 = Func f (assoc e)
+assoc e                          = e
 
-  arbExpr :: Int -> Gen Expr
-  arbExpr s = frequency [(1, rUnit), (s, rBin s)]
+arbExpr :: Int -> Gen Expr
+arbExpr s = frequency [(1, rUnit), (s, rBin s)]
     where rUnit  = frequency [(2, rNum), (2, rVar), (1, rFunc)]
           rNum   = Num <$> (arbitrary :: Gen Double)
           rVar   = return X
           rFunc  = do
-            func <- elements [Sin, Cos]
-            e <- arbExpr s
-            return $ Func func e
+              func <- elements [Sin, Cos]
+              e <- arbExpr s
+              return $ Func func e
           rBin s = do
-            op <- elements [Add, Mul]
-            let s' = s `div` 2
-            e1 <- arbExpr s'
-            e2 <- arbExpr s'
-            return $ Op op e1 e2
+              op <- elements [Add, Mul]
+              let s' = s `div` 2
+              e1 <- arbExpr s'
+              e2 <- arbExpr s'
+              return $ Op op e1 e2
 
-  -- Part F
+-- Part F
 
-  simplifyOp :: Op -> Expr -> Expr -> Expr
+simplifyOp :: Op -> Expr -> Expr -> Expr
 
-  -- basic numbers, n1 + n2 = n1 + n2
-  simplifyOp Add (Num e1) (Num e2)            = num (e1 + e2)
-  -- identity, 0 + e = e
-  simplifyOp Add (Num 0)  e                   = simplify e
-  -- pull numbers to the left, e + n = n + e
-  simplifyOp Add e        (Num n)             = simplify $ add (num n) e
-  -- add numbers in nested additions, n1 + (n2 + e) = (n1 + n2) + e
-  simplifyOp Add (Num n1) (Op Add (Num n2) e) = simplify $ add (num (n1 + n2)) e
-  -- pull numbers out of nested additions, e1 + (n + e2) = n + (e1 + e2)
-  simplifyOp Add e1       (Op Add (Num n) e2) = simplify $ add (num n) (add e1 e2)
-  -- pull expressions to the left out of nested additions, (e1 + e2) + e3 = e1 + (e2 + e3)
-  simplifyOp Add (Op Add e1A e1B) e2          = simplify $ add e1A (add e1B e2)
-  -- factor out common factors, e1 * e3 + e2 * e3 = (e1 + e2) * e3
-  simplifyOp Add (Op Mul e1A e1B) (Op Mul e2A e2B) | e1B == e2B = simplify $ mul (add e1A e2A) e1B
-  -- base case for factorization
-                                                  | otherwise  = add (mul e1A e1B) (mul e2A e2B)
-  -- multiply expressions by 2 if equals
-  simplifyOp Add e1 e2 | e1 == e2             = simplify $ mul (num 2) e1
-  -- base case for addition
-                      | otherwise            = add e1 e2
+-- basic numbers, n1 + n2 = n1 + n2
+simplifyOp Add (Num e1) (Num e2)            = num (e1 + e2)
+-- identity, 0 + e = e
+simplifyOp Add (Num 0)  e                   = simplify e
+-- pull numbers to the left, e + n = n + e
+simplifyOp Add e        (Num n)             = simplify $ add (num n) e
+-- add numbers in nested additions, n1 + (n2 + e) = (n1 + n2) + e
+simplifyOp Add (Num n1) (Op Add (Num n2) e) = simplify $ add (num (n1 + n2)) e
+-- pull numbers out of nested additions, e1 + (n + e2) = n + (e1 + e2)
+simplifyOp Add e1       (Op Add (Num n) e2) = simplify $ add (num n) (add e1 e2)
+-- pull expressions to the left out of nested additions, (e1 + e2) + e3 = e1 + (e2 + e3)
+simplifyOp Add (Op Add e1A e1B) e2          = simplify $ add e1A (add e1B e2)
+-- factor out common factors, e1 * e3 + e2 * e3 = (e1 + e2) * e3
+simplifyOp Add (Op Mul e1A e1B) (Op Mul e2A e2B) | e1A == e2A = simplify $ mul (add e1B e2B) e1A
+                                                 | e1B == e2B = simplify $ mul (add e1A e2A) e1B
+-- base case for factorization
+                                                 | otherwise  = add (mul e1A e1B) (mul e2A e2B)
+-- multiply expressions by 2 if equals
+simplifyOp Add e1 e2 | e1 == e2             = simplify $ mul (num 2) e1
+-- base case for addition
+                     | otherwise            = add e1 e2
 
-  -- Similar to the addition, but not enough to merge them...
-  simplifyOp Mul (Num e1) (Num e2)            = num (e1 * e2)
-  simplifyOp Mul (Num 0)  e                   = num 0
-  simplifyOp Mul (Num 1)  e                   = simplify e
-  simplifyOp Mul e        (Num n)             = simplify $ mul (num n) e
-  simplifyOp Mul (Num n1) (Op Mul (Num n2) e) = simplify $ mul (num (n1 * n2)) e
-  simplifyOp Mul e1       (Op Mul (Num n) e2) = simplify $ mul (num n) (mul e1 e2)
-  simplifyOp Mul (Op Mul e1A e1B) e2          = simplify $ mul e1A (mul e1B e2)
-  simplifyOp Mul e1 e2                        = mul e1 e2
-  -- TODO: fix "([x * cos x] + [cos x * x])"
+-- Similar to the addition, but not enough to merge them...
+simplifyOp Mul (Num e1) (Num e2)            = num (e1 * e2)
+simplifyOp Mul (Num 0)  e                   = num 0
+simplifyOp Mul (Num 1)  e                   = simplify e
+simplifyOp Mul e        (Num n)             = simplify $ mul (num n) e
+simplifyOp Mul (Num n1) (Op Mul (Num n2) e) = simplify $ mul (num (n1 * n2)) e
+simplifyOp Mul e1       (Op Mul (Num n) e2) = simplify $ mul (num n) (mul e1 e2)
+simplifyOp Mul (Op Mul e1A e1B) e2          = simplify $ mul e1A (mul e1B e2)
+simplifyOp Mul e1 e2                        = mul e1 e2
+-- TODO: fix "([x * cos x] + [cos x * x])"
 
-  simplifyFunc :: Func -> Expr -> Expr
-  simplifyFunc Sin (Num n) = num $ P.sin n
-  simplifyFunc Sin e       = sin $ simplify e
-  simplifyFunc Cos (Num n) = num $ P.cos n
-  simplifyFunc Cos e       = cos $ simplify e
-  -- We could maybe simplify sin and cos by using the fact that sin(x) = cos(pi/2 - x) ?
-  --  Or that sin(pi/2) = 1 and cos(pi/2) = 0 ?
+simplifyFunc :: Func -> Expr -> Expr
+simplifyFunc Sin (Num 0) = num 0
+simplifyFunc Sin e       | e == pi = num 0
+                         | e == pi_2    = num 1
+                         | e == pi2     = num 0
+                         | otherwise    = sin $ simplify e
+simplifyFunc Cos (Num 0) = num 1
+simplifyFunc Cos e       | e == pi = num $ -1
+                         | e == pi_2    = num 0
+                         | e == pi2     = num 1
+                         | otherwise    = cos $ simplify e
+-- We could maybe simplify sin and cos by using the fact that sin(x) = cos(pi/2 - x) ?
 
-  simplify :: Expr -> Expr
-  simplify (Num n)       = num n
-  simplify X             = x
-  simplify (Op op e1 e2) = simplifyOp op (simplify e1) (simplify e2)
-  simplify (Func f e)    = simplifyFunc f (simplify e)
+simplify :: Expr -> Expr
+simplify (Num n)       = num n
+simplify X             = x
+simplify (Op op e1 e2) = simplifyOp op (simplify e1) (simplify e2)
+simplify (Func f e)    = simplifyFunc f (simplify e)
 
-  prop_simplify :: Expr -> Double -> Bool
-  prop_simplify e x = eval e x == eval (simplify e) x
-  -- TODO : fix the problem with (fromJust $ readExpr "x * (-1.2904381421531175 * x)") for example
+-- TODO: Do the quickcheck test
+prop_simplify :: Expr -> Double -> Bool
+prop_simplify e x = eval e x == eval (simplify e) x
 
-  -- Part G
+-- Part G
 
-  differentiateOp :: Op -> Expr -> Expr -> Expr
-  differentiateOp Add e1 e2 = add (differentiate e1) (differentiate e2)
-  differentiateOp Mul e1 e2 = add (mul (differentiate e1) e2) (mul e1 (differentiate e2))
+differentiateOp :: Op -> Expr -> Expr -> Expr
+differentiateOp Add e1 e2 = add (differentiate e1) (differentiate e2)
+differentiateOp Mul e1 e2 = add (mul (differentiate e1) e2) (mul e1 (differentiate e2))
 
-  differentiateFunc :: Func -> Expr -> Expr
-  differentiateFunc Sin e = mul (cos e) (differentiate e)
-  differentiateFunc Cos e = mul (num $ -1) (mul (sin e) (differentiate e))
+differentiateFunc :: Func -> Expr -> Expr
+differentiateFunc Sin e = mul (cos e) (differentiate e)
+differentiateFunc Cos e = mul (num $ -1) (mul (sin e) (differentiate e))
 
-  differentiate :: Expr -> Expr
-  differentiate (Num n)       = num 0
-  differentiate X             = num 1
-  differentiate (Op op e1 e2) = simplify $ differentiateOp op e1 e2
-  differentiate (Func f e)    = simplify $ differentiateFunc f e
+differentiate :: Expr -> Expr
+differentiate (Num n)       = num 0
+differentiate X             = num 1
+differentiate (Op op e1 e2) = simplify $ differentiateOp op e1 e2
+differentiate (Func f e)    = simplify $ differentiateFunc f e
 
-  -- Debug
-  -- TODO: Remove the following lines
+-- Debug
+-- TODO: Remove the following lines
 
-  test :: Expr
-  test = add (mul x (cos x)) (mul (cos x) x)
+test :: Expr
+test = add (mul x (cos x)) (mul (cos x) x)
