@@ -110,7 +110,7 @@ module Expr where
     where s' = filter (not . isSpace) s
 
   ---- Part E
-  
+
   instance Arbitrary Expr where
     arbitrary = sized arbExpr
 
@@ -135,7 +135,7 @@ module Expr where
             return $ Func func e
           rBin s = do
             op <- elements [Add, Mul]
-            let s' = s `div` 2 
+            let s' = s `div` 2
             e1 <- arbExpr s'
             e2 <- arbExpr s'
             return $ Op op e1 e2
@@ -189,6 +189,10 @@ module Expr where
   simplify X             = x
   simplify (Op op e1 e2) = simplifyOp op (simplify e1) (simplify e2)
   simplify (Func f e)    = simplifyFunc f (simplify e)
+
+  prop_simplify :: Expr -> Double -> Bool
+  prop_simplify e x = eval e x == eval (simplify e) x
+  -- TODO : fix the problem with (fromJust $ readExpr "x * (-1.2904381421531175 * x)") for example
 
   -- Part G
 
