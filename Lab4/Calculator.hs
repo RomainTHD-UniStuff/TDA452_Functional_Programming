@@ -19,7 +19,7 @@ setup window =
   do -- Create them user interface elements
   canvas  <- mkCanvas canWidth canHeight   -- The drawing area
   zoomL   <- mkHTML "Zoom +/-"             -- The text "Zoom +/-"
-  slider  <- mkSlider (1, 3) 1             -- The zoom slider
+  slider  <- mkSlider (100, 300) 100       -- The zoom slider
   fx      <- mkHTML "<i>f</i>(<i>x</i>)= " -- The text "f(x)="
   input   <- mkInput 20 ""                 -- The formula input
   reset   <- mkButton "Reset"              -- The reset button
@@ -99,13 +99,16 @@ pixToReal :: (Double, Double) -> (Double, Double)
 pixToReal x = undefined
 
 -- converts a real y-coordinate to a pixel y-coordinate
-realToPix :: (Double, Double) -> (Double, Double)
-realToPix (x, y) = (x + canWidth/2, -y + canHeight/2)
+realToPix :: (Double, Double) -> Double -> (Double, Double)
+realToPix (x, y) scale = (factor * x + canWidth/2, -y * factor + canHeight/2)
+  where factor = 1.0 / scale
 
 points :: Expr -> Double -> (Int,Int) -> [Point]
-points exp scale (width,height) = [realToPix (x, eval exp x) | x <- [(-canWidth/2), (-canWidth/2)+scale..canWidth/2]]
+points exp scale (width, height) = [realToPix (x, eval exp x) scale | x <- [(-limit), (-limit) + scale..limit]]
+  where limit = scale * fromIntegral width / 2.0 
 
 zoom :: Element -> Canvas -> Element -> UI ()
 zoom input canvas slider = do
-  zValue <- get value slider
-  printCanvas (0.04/read zValue) input canvas slider
+  v <- get value slider
+  let zValue = 0.04 / (read v/100)
+  printCanvas zValue input canvas slider
