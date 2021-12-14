@@ -19,20 +19,24 @@ sin, cos :: Expr -> Expr
 
 -- Expr data structure
 
+-- Functions acting on one expression
 data Func = Sin
           | Cos
           deriving (Eq, Show)
 
+-- Operators acting on two expressions
 data Op = Add
         | Mul
     deriving (Eq, Show)
 
+-- Expression
 data Expr = Num Double
           | X
           | Op Op Expr Expr
           | Func Func Expr
-          deriving (Eq, Show)
+          deriving (Eq)
 
+-- Expressions onstructors
 x = X
 num = Num
 add = Op Add
@@ -49,6 +53,7 @@ pi_2 = Num (P.pi / 2)
 pi2 :: Expr
 pi2 = Num (P.pi * 2)
 
+-- Expression size
 size :: Expr -> Int
 size (Num _)      = 0
 size X            = 0
@@ -57,9 +62,10 @@ size (Func _ e)   = 1 + size e
 
 -- Part B
 
---instance Show Expr where
---    show = showExpr
+instance Show Expr where
+    show = showExpr
 
+-- Show an expression
 showExpr :: Expr -> String
 showExpr (Num n)        = show n
 showExpr X              = "x"
@@ -68,20 +74,24 @@ showExpr (Op Mul e1 e2) = showFactor e1 ++ " * " ++ showFactor e2
 showExpr (Func Sin e)   = "sin " ++ showFactor e
 showExpr (Func Cos e)   = "cos " ++ showFactor e
 
+-- Show an expression with parentheses
 showFactor :: Expr -> String
 showFactor (Op op e1 e2) = "(" ++ showExpr (Op op e1 e2) ++ ")"
 showFactor e             = showExpr e
 
 -- Part C
 
+-- Evaluate an operator
 evalOp :: Op -> Double -> Double -> Double
 evalOp Add = (+)
 evalOp Mul = (*)
 
+-- Evaluate a function
 evalFunc :: Func -> Double -> Double
 evalFunc Sin = P.sin
 evalFunc Cos = P.cos
 
+-- Evaluate an expression
 eval :: Expr -> Double -> Double
 eval (Num n) _       = n
 eval X y             = y
@@ -103,6 +113,7 @@ factor = Num <$> readsP
 satStr :: String -> Parser Char
 satStr s = foldr1 (<*) (char <$> s)
 
+-- Transform a string into an expression
 readExpr :: String -> Maybe Expr
 readExpr s = case parse expr s' of
         Just(e, "") -> Just e
@@ -114,17 +125,19 @@ readExpr s = case parse expr s' of
 instance Arbitrary Expr where
     arbitrary = sized arbExpr
 
+-- Property to check that an expression is displayed the right way
 prop_ShowReadExpr :: Expr -> Bool
 prop_ShowReadExpr e = (assoc e ==) . assoc <$> fromJust $ readExpr (showExpr e)
 
+-- Helper function, transforms an expression like `(a + b) + (c + d)` into `a + (b + (c + d))`
 assoc :: Expr -> Expr
-assoc (Op Add (Op Add e1 e2) e3) = assoc (Op Add e1 (Op Add e2 e3))
-assoc (Op Add e1 e2)             = Op Add (assoc e1) (assoc e2)
-assoc (Op Mul (Op Mul e1 e2) e3) = assoc (Op Mul e1 (Op Mul e2 e3))
-assoc (Op Mul e1 e2)             = Op Mul (assoc e1) (assoc e2)
-assoc (Func f e)                 = Func f (assoc e)
-assoc e                          = e
+assoc (Op o1 (Op o2 e1 e2) e3) | o1 == o2 = assoc (Op o1 e1 (Op o2 e2 e3))
+                               | otherwise = Op o1 (assoc (Op o2 e1 e2)) (assoc e3)
+assoc (Op o e1 e2)             = Op o (assoc e1) (assoc e2)
+assoc (Func f e)               = Func f (assoc e)
+assoc e                        = e
 
+-- Arbitrary expression
 arbExpr :: Int -> Gen Expr
 arbExpr s = frequency [(1, rUnit), (s, rBin s)]
     where rUnit  = frequency [(2, rNum), (2, rVar), (1, rFunc)]
@@ -143,6 +156,7 @@ arbExpr s = frequency [(1, rUnit), (s, rBin s)]
 
 -- Part F
 
+-- Simplify an operator
 simplifyOp :: Op -> Expr -> Expr -> Expr
 
 -- basic numbers, n1 + n2 = n1 + n2
@@ -167,17 +181,17 @@ simplifyOp Add e1 e2 | e1 == e2             = simplify $ mul (num 2) e1
 -- base case for addition
                      | otherwise            = add e1 e2
 
--- Similar to the addition, but not enough to merge them...
+-- Similar to the addition, but not enough to merge the two cases...
 simplifyOp Mul (Num e1) (Num e2)            = num (e1 * e2)
 simplifyOp Mul (Num 0)  e                   = num 0
 simplifyOp Mul (Num 1)  e                   = simplify e
 simplifyOp Mul e        (Num n)             = simplify $ mul (num n) e
 simplifyOp Mul (Num n1) (Op Mul (Num n2) e) = simplify $ mul (num (n1 * n2)) e
 simplifyOp Mul e1       (Op Mul (Num n) e2) = simplify $ mul (num n) (mul e1 e2)
-simplifyOp Mul (Op Mul e1A e1B) e2          = simplify $ mul e1A (mul e1B e2)
 simplifyOp Mul e1 e2                        = mul e1 e2
--- TODO: fix "([x * cos x] + [cos x * x])"
+-- We could also fix "([x * cos x] + [cos x * x])", but it might be too much
 
+-- Simplify a function
 simplifyFunc :: Func -> Expr -> Expr
 simplifyFunc Sin (Num 0) = num 0
 simplifyFunc Sin e       | e == pi = num 0
@@ -189,30 +203,42 @@ simplifyFunc Cos e       | e == pi = num $ -1
                          | e == pi_2    = num 0
                          | e == pi2     = num 1
                          | otherwise    = cos $ simplify e
--- We could maybe simplify sin and cos by using the fact that sin(x) = cos(pi/2 - x) ?
 
+-- Simplify an expression
 simplify :: Expr -> Expr
 simplify (Num n)       = num n
 simplify X             = x
-simplify (Op op e1 e2) = simplifyOp op (simplify e1) (simplify e2)
-simplify (Func f e)    = simplifyFunc f (simplify e)
+simplify (Op op e1 e2) = simplifyOp op (simplify (assoc e1)) (simplify (assoc e2))
+simplify (Func f e)    = simplifyFunc f (simplify (assoc e))
 
+-- Property to check that an expression is simplified the right way
+--  Because of some floating point errors, we have to check that small numbers
+--  like 1e-7 and 1e-8 are absolutely almost equal (i.e. a difference < 1e-6 for example),
+--  and that big numbers like 1e7 and 1e8 are relatively almost equal
+--  (for example, we can allow a difference of 0.1 if the numbers are in the range of 1e35).
+--  This second method shouldn't be used for small numbers, because they have a terrible condition
+--  and could skyrocket to infinity for numbers near zero
+--  We suspect Haskell's prelude or even GHC itself to do some background optimizations,
+--  expecially on sin and cos, to avoid these floating point errors.
 prop_simplify :: Expr -> Double -> Bool
 prop_simplify e x = if abs e1 < 1.0 then abs (e1 - e2) < eps else abs (abs(e1 / e2) - 1.0) < eps
     where e1 = eval e x
           e2 = eval (simplify e) x
-          eps = 1e-9
+          eps = if e1 > 1e18 then 1e-3 else 1e-5
 
 -- Part G
 
+-- Derive an operator
 differentiateOp :: Op -> Expr -> Expr -> Expr
 differentiateOp Add e1 e2 = add (differentiate e1) (differentiate e2)
 differentiateOp Mul e1 e2 = add (mul (differentiate e1) e2) (mul e1 (differentiate e2))
 
+-- Derive a function
 differentiateFunc :: Func -> Expr -> Expr
 differentiateFunc Sin e = mul (cos e) (differentiate e)
 differentiateFunc Cos e = mul (num $ -1) (mul (sin e) (differentiate e))
 
+-- Derive an expression
 differentiate :: Expr -> Expr
 differentiate (Num n)       = num 0
 differentiate X             = num 1
