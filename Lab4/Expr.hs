@@ -21,17 +21,17 @@ sin, cos :: Expr -> Expr
 
 data Func = Sin
           | Cos
-          deriving (Eq)
+          deriving (Eq, Show)
 
 data Op = Add
         | Mul
-    deriving (Eq)
+    deriving (Eq, Show)
 
 data Expr = Num Double
           | X
           | Op Op Expr Expr
           | Func Func Expr
-          deriving (Eq)
+          deriving (Eq, Show)
 
 x = X
 num = Num
@@ -57,8 +57,8 @@ size (Func _ e)   = 1 + size e
 
 -- Part B
 
-instance Show Expr where
-    show = showExpr
+--instance Show Expr where
+--    show = showExpr
 
 showExpr :: Expr -> String
 showExpr (Num n)        = show n
@@ -69,15 +69,8 @@ showExpr (Func Sin e)   = "sin " ++ showFactor e
 showExpr (Func Cos e)   = "cos " ++ showFactor e
 
 showFactor :: Expr -> String
-showFactor (Op Mul e1 e2) = showFactor e1 ++ " * " ++ showFactor e2
-showFactor (Num n)        | n == fromInteger (round n) = show $ round n
-                          | otherwise = show n
-showFactor (Func Sin (Op op e1 e2)) = "sin(" ++ showExpr (Op op e1 e2) ++ ")"
-showFactor (Func Sin e)   = "sin " ++ showExpr e
-showFactor (Func Cos (Op op e1 e2)) = "cos(" ++ showExpr (Op op e1 e2) ++ ")"
-showFactor (Func Cos e)   = "cos " ++ showExpr e
-showFactor X              = "x"
-showFactor e              = "(" ++ showExpr e ++ ")"
+showFactor (Op op e1 e2) = "(" ++ showExpr (Op op e1 e2) ++ ")"
+showFactor e             = showExpr e
 
 -- Part C
 
@@ -127,6 +120,7 @@ prop_ShowReadExpr e = (assoc e ==) . assoc <$> fromJust $ readExpr (showExpr e)
 assoc :: Expr -> Expr
 assoc (Op Add (Op Add e1 e2) e3) = assoc (Op Add e1 (Op Add e2 e3))
 assoc (Op Add e1 e2)             = Op Add (assoc e1) (assoc e2)
+assoc (Op Mul (Op Mul e1 e2) e3) = assoc (Op Mul e1 (Op Mul e2 e3))
 assoc (Op Mul e1 e2)             = Op Mul (assoc e1) (assoc e2)
 assoc (Func f e)                 = Func f (assoc e)
 assoc e                          = e
@@ -203,9 +197,11 @@ simplify X             = x
 simplify (Op op e1 e2) = simplifyOp op (simplify e1) (simplify e2)
 simplify (Func f e)    = simplifyFunc f (simplify e)
 
--- TODO: Do the quickcheck test
 prop_simplify :: Expr -> Double -> Bool
-prop_simplify e x = eval e x == eval (simplify e) x
+prop_simplify e x = if abs e1 < 1.0 then abs (e1 - e2) < eps else abs (abs(e1 / e2) - 1.0) < eps
+    where e1 = eval e x
+          e2 = eval (simplify e) x
+          eps = 1e-9
 
 -- Part G
 
@@ -222,9 +218,3 @@ differentiate (Num n)       = num 0
 differentiate X             = num 1
 differentiate (Op op e1 e2) = simplify $ differentiateOp op e1 e2
 differentiate (Func f e)    = simplify $ differentiateFunc f e
-
--- Debug
--- TODO: Remove the following lines
-
-test :: Expr
-test = add (mul x (cos x)) (mul (cos x) x)
