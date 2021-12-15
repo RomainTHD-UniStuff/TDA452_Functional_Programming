@@ -1,3 +1,9 @@
+{- Lab 4B - Expr.hs
+   Date: 08/12/2021
+   Authors: Fanny Rouvel - Romain Theodet
+   Lab group: 27
+ -}
+
 module Expr where
 
 import Prelude hiding (sin, cos, pi)

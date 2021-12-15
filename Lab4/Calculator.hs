@@ -1,3 +1,9 @@
+{- Lab 4B - Calculator.hs
+   Date: 08/12/2021
+   Authors: Fanny Rouvel - Romain Theodet
+   Lab group: 27
+ -}
+
 import ThreepennyPages
 import Graphics.UI.Threepenny.Core as UI
 import qualified Graphics.UI.Threepenny as UI
