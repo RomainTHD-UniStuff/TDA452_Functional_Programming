@@ -1,5 +1,5 @@
 {- Lab 4B - Expr.hs
-   Date: 08/12/2021
+   Date: 18/12/2021
    Authors: Fanny Rouvel - Romain Theodet
    Lab group: 27
  -}
@@ -49,15 +49,6 @@ add = Op Add
 mul = Op Mul
 sin = Func Sin
 cos = Func Cos
-
-pi :: Expr
-pi = Num P.pi
-
-pi_2 :: Expr
-pi_2 = Num (P.pi / 2)
-
-pi2 :: Expr
-pi2 = Num (P.pi * 2)
 
 -- Expression size
 size :: Expr -> Int
@@ -199,16 +190,10 @@ simplifyOp Mul e1 e2                        = mul e1 e2
 
 -- Simplify a function
 simplifyFunc :: Func -> Expr -> Expr
-simplifyFunc Sin (Num 0) = num 0
-simplifyFunc Sin e       | e == pi = num 0
-                         | e == pi_2    = num 1
-                         | e == pi2     = num 0
-                         | otherwise    = sin $ basicSimplify e
-simplifyFunc Cos (Num 0) = num 1
-simplifyFunc Cos e       | e == pi = num $ -1
-                         | e == pi_2    = num 0
-                         | e == pi2     = num 1
-                         | otherwise    = cos $ basicSimplify e
+simplifyFunc Sin (Num n) = num $ P.sin n
+simplifyFunc Sin e       = sin $ basicSimplify e
+simplifyFunc Cos (Num n) = num $ P.cos n
+simplifyFunc Cos e       = cos $ basicSimplify e
 
 -- Simplify an expression
 basicSimplify :: Expr -> Expr
