@@ -136,9 +136,9 @@ assoc e                        = e
 
 -- Arbitrary expression
 arbExpr :: Int -> Gen Expr
-arbExpr s = frequency [(1, rUnit), (s, rBin s)]
+arbExpr s = frequency [(2, rUnit), (s, rBin s)]
     where rUnit  = frequency [(2, rNum), (2, rVar), (1, rFunc)]
-          rNum   = Num . fromIntegral . abs <$> (arbitrary :: Gen Int)
+          rNum   = Num <$> (arbitrary :: Gen Double)
           rVar   = return X
           rFunc  = do
               func <- elements [Sin, Cos]
@@ -155,59 +155,57 @@ arbExpr s = frequency [(1, rUnit), (s, rBin s)]
 
 -- Simplify an operator
 simplifyOp :: Op -> Expr -> Expr -> Expr
+simplifyOp Add e1 e2 = simplifyAdd e1 e2
+simplifyOp Mul e1 e2 = simplifyMul e1 e2
 
+simplifyAdd :: Expr -> Expr -> Expr
 -- basic numbers, n1 + n2 = n1 + n2
-simplifyOp Add (Num e1) (Num e2)            = num (e1 + e2)
+simplifyAdd (Num e1) (Num e2)             = num (e1 + e2)
 -- identity, 0 + e = e
-simplifyOp Add (Num 0)  e                   = basicSimplify e
+simplifyAdd (Num 0)  e                    = e
 -- pull numbers to the left, e + n = n + e
-simplifyOp Add e        (Num n)             = basicSimplify $ add (num n) e
+simplifyAdd e        (Num n)              = simplifyAdd (num n) e
 -- add numbers in nested additions, n1 + (n2 + e) = (n1 + n2) + e
-simplifyOp Add (Num n1) (Op Add (Num n2) e) = basicSimplify $ add (num (n1 + n2)) e
+simplifyAdd (Num n1) (Op Add (Num n2) e)  = simplifyAdd (num (n1 + n2)) e
 -- pull numbers out of nested additions, e1 + (n + e2) = n + (e1 + e2)
-simplifyOp Add e1       (Op Add (Num n) e2) = basicSimplify $ add (num n) (add e1 e2)
--- pull expressions to the left out of nested additions, (e1 + e2) + e3 = e1 + (e2 + e3)
-simplifyOp Add (Op Add e1A e1B) e2          = basicSimplify $ add e1A (add e1B e2)
+simplifyAdd e1       (Op Add (Num n) e2)  = simplifyAdd (num n) (add e1 e2)
 -- factor out common factors, e1 * e3 + e2 * e3 = (e1 + e2) * e3
-simplifyOp Add (Op Mul e1A e1B) (Op Mul e2A e2B) | e1A == e2A = basicSimplify $ mul (add e1B e2B) e1A
-                                                 | e1B == e2B = basicSimplify $ mul (add e1A e2A) e1B
+simplifyAdd (Op Mul e1A e1B) (Op Mul e2A e2B) | e1A == e2A = simplifyMul (simplifyAdd e1B e2B) e1A
+                                              | e1B == e2B = simplifyMul (simplifyAdd e1A e2A) e1B
 -- base case for factorization
-                                                 | otherwise  = add (mul e1A e1B) (mul e2A e2B)
+                                              | otherwise  = add (mul e1A e1B) (mul e2A e2B)
 -- multiply expressions by 2 if equals
-simplifyOp Add e1 e2 | e1 == e2             = basicSimplify $ mul (num 2) e1
+simplifyAdd e1 e2 | e1 == e2             = mul (num 2) e1
 -- base case for addition
-                     | otherwise            = add e1 e2
+                  | otherwise            = add e1 e2
 
+simplifyMul :: Expr -> Expr -> Expr
 -- Similar to the addition, but not enough to merge the two cases...
-simplifyOp Mul (Num e1) (Num e2)            = num (e1 * e2)
-simplifyOp Mul (Num 0)  e                   = num 0
-simplifyOp Mul (Num 1)  e                   = basicSimplify e
-simplifyOp Mul e        (Num n)             = basicSimplify $ mul (num n) e
-simplifyOp Mul (Num n1) (Op Mul (Num n2) e) = basicSimplify $ mul (num (n1 * n2)) e
-simplifyOp Mul e1       (Op Mul (Num n) e2) = basicSimplify $ mul (num n) (mul e1 e2)
-simplifyOp Mul e1 e2                        = mul e1 e2
+simplifyMul (Num e1) (Num e2)            = num (e1 * e2)
+simplifyMul (Num 0)  e                   = num 0
+simplifyMul (Num 1)  e                   = e
+simplifyMul e        (Num n)             = simplifyMul (num n) e
+simplifyMul (Num n1) (Op Mul (Num n2) e) = simplifyMul (num (n1 * n2)) e
+simplifyMul e1       (Op Mul (Num n) e2) = simplifyMul (num n) (mul e1 e2)
+simplifyMul e1 e2                        = mul e1 e2
 -- We could also fix "([x * cos x] + [cos x * x])", but it might be too much
 
 -- Simplify a function
 simplifyFunc :: Func -> Expr -> Expr
 simplifyFunc Sin (Num n) = num $ P.sin n
-simplifyFunc Sin e       = sin $ basicSimplify e
+simplifyFunc Sin e       = sin $ simplify e
 simplifyFunc Cos (Num n) = num $ P.cos n
-simplifyFunc Cos e       = cos $ basicSimplify e
+simplifyFunc Cos e       = cos $ simplify e
 
 -- Simplify an expression
-basicSimplify :: Expr -> Expr
-basicSimplify (Num n)       = num n
-basicSimplify X             = x
-basicSimplify (Op op e1 e2) = simplifyOp op (basicSimplify (assoc e1)) (basicSimplify (assoc e2))
-basicSimplify (Func f e)    = simplifyFunc f (basicSimplify (assoc e))
-
--- Because of the factorization, we need to process it twice.
---  Expressions like (x + x) * n will be simplified to (2 * x) * n,
---  however this is not what we want ; we would like to have 2 * (n * x),
---  hence the second call to simplify, because otherwise it would be way more messy
 simplify :: Expr -> Expr
-simplify e = basicSimplify $ basicSimplify e
+simplify (Num n)       = num n
+simplify X             = x
+simplify (Op op e1 e2) = simplifyOp new_op (simplify (assoc new_e1)) (simplify (assoc new_e2))
+    where simplify_e1 = simplify (assoc e1)
+          simplify_e2 = simplify (assoc e2)
+          (Op new_op new_e1 new_e2) = assoc (Op op simplify_e1 simplify_e2)
+simplify (Func f e)    = simplifyFunc f (simplify (assoc e))
 
 -- Property to check that an expression is simplified the right way
 --  Because of some floating point errors, we have to check that small numbers
@@ -226,7 +224,8 @@ prop_simplify e x = if abs e1 < 1.0 then abs (e1 - e2) < eps else abs (abs(e1 / 
 
 -- checks that the simplification is maximum
 prop_max_simplify :: Expr -> Bool
-prop_max_simplify e = simplify e == simplify (simplify e)
+prop_max_simplify e = simplified == simplify simplified
+    where simplified = simplify e
 
 -- Part G
 
