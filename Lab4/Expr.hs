@@ -1,5 +1,5 @@
 {- Lab 4B - Expr.hs
-   Date: 18/12/2021
+   Date: 26/12/2021
    Authors: Fanny Rouvel - Romain Theodet
    Lab group: 27
  -}
@@ -138,7 +138,8 @@ assoc e                        = e
 arbExpr :: Int -> Gen Expr
 arbExpr s = frequency [(2, rUnit), (s, rBin s)]
     where rUnit  = frequency [(2, rNum), (2, rVar), (1, rFunc)]
-          rNum   = Num <$> (arbitrary :: Gen Double)
+          -- Helps to generate readable numbers
+          rNum   = Num . fromIntegral <$> (arbitrary :: Gen Integer)
           rVar   = return X
           rFunc  = do
               func <- elements [Sin, Cos]
@@ -169,15 +170,7 @@ simplifyAdd e        (Num n)              = simplifyAdd (num n) e
 simplifyAdd (Num n1) (Op Add (Num n2) e)  = simplifyAdd (num (n1 + n2)) e
 -- pull numbers out of nested additions, e1 + (n + e2) = n + (e1 + e2)
 simplifyAdd e1       (Op Add (Num n) e2)  = simplifyAdd (num n) (add e1 e2)
--- factor out common factors, e1 * e3 + e2 * e3 = (e1 + e2) * e3
-simplifyAdd (Op Mul e1A e1B) (Op Mul e2A e2B) | e1A == e2A = simplifyMul (simplifyAdd e1B e2B) e1A
-                                              | e1B == e2B = simplifyMul (simplifyAdd e1A e2A) e1B
--- base case for factorization
-                                              | otherwise  = add (mul e1A e1B) (mul e2A e2B)
--- multiply expressions by 2 if equals
-simplifyAdd e1 e2 | e1 == e2             = mul (num 2) e1
--- base case for addition
-                  | otherwise            = add e1 e2
+simplifyAdd e1       e2                   = add e1 e2
 
 simplifyMul :: Expr -> Expr -> Expr
 -- Similar to the addition, but not enough to merge the two cases...
@@ -187,25 +180,25 @@ simplifyMul (Num 1)  e                   = e
 simplifyMul e        (Num n)             = simplifyMul (num n) e
 simplifyMul (Num n1) (Op Mul (Num n2) e) = simplifyMul (num (n1 * n2)) e
 simplifyMul e1       (Op Mul (Num n) e2) = simplifyMul (num n) (mul e1 e2)
-simplifyMul e1 e2                        = mul e1 e2
--- We could also fix "([x * cos x] + [cos x * x])", but it might be too much
+simplifyMul e1       e2                  = mul e1 e2
 
 -- Simplify a function
 simplifyFunc :: Func -> Expr -> Expr
 simplifyFunc Sin (Num n) = num $ P.sin n
-simplifyFunc Sin e       = sin $ simplify e
+simplifyFunc Sin e       = sin e
 simplifyFunc Cos (Num n) = num $ P.cos n
-simplifyFunc Cos e       = cos $ simplify e
+simplifyFunc Cos e       = cos e
+
+-- Simplify an expression, assuming a well-formed expression like `a + (b + (c + d))`
+basicSimplify :: Expr -> Expr
+basicSimplify (Num n)       = num n
+basicSimplify X             = x
+basicSimplify (Op op e1 e2) = simplifyOp op (basicSimplify e1) (basicSimplify e2)
+basicSimplify (Func f e)    = simplifyFunc f (basicSimplify e)
 
 -- Simplify an expression
 simplify :: Expr -> Expr
-simplify (Num n)       = num n
-simplify X             = x
-simplify (Op op e1 e2) = simplifyOp new_op (simplify (assoc new_e1)) (simplify (assoc new_e2))
-    where simplify_e1 = simplify (assoc e1)
-          simplify_e2 = simplify (assoc e2)
-          (Op new_op new_e1 new_e2) = assoc (Op op simplify_e1 simplify_e2)
-simplify (Func f e)    = simplifyFunc f (simplify (assoc e))
+simplify e = assoc $ basicSimplify $ assoc e
 
 -- Property to check that an expression is simplified the right way
 --  Because of some floating point errors, we have to check that small numbers
@@ -220,12 +213,34 @@ prop_simplify :: Expr -> Double -> Bool
 prop_simplify e x = if abs e1 < 1.0 then abs (e1 - e2) < eps else abs (abs(e1 / e2) - 1.0) < eps
     where e1 = eval e x
           e2 = eval (simplify e) x
-          eps = if e1 > 1e18 then 1e-3 else 1e-5
+          eps = if abs e1 > 1e18 then 1e-3 else 1e-5
+
+-- Whether an expression is simplified or not, i.e. does not contains junk like `x + 0`
+containsJunkAdd :: Expr -> Expr -> Bool
+containsJunkAdd (Num _) (Num _)            = True -- `n + m`
+containsJunkAdd (Num 0) _                  = True -- `0 + e`
+containsJunkAdd _       (Num _)            = True -- Wrong order
+containsJunkAdd (Num _) (Op Add (Num _) _) = True -- `n + (m + e)`
+containsJunkAdd e1      e2                 = containsJunk e1 || containsJunk e2
+
+containsJunkMul :: Expr -> Expr -> Bool
+containsJunkMul (Num _) (Num _)            = True
+containsJunkMul (Num 0)  _                 = True
+containsJunkMul (Num 1)  _                 = True
+containsJunkMul _       (Num _)            = True
+containsJunkMul (Num _) (Op Mul (Num _) _) = True
+containsJunkMul e1      e2                 = containsJunk e1 || containsJunk e2
+
+containsJunk :: Expr -> Bool
+containsJunk (Op Mul e1 e2) = containsJunkMul e1 e2
+containsJunk (Op Add e1 e2) = containsJunkAdd e1 e2
+containsJunk (Func f e)     = containsJunk e
+containsJunk (Num _)        = False
+containsJunk X              = False
 
 -- checks that the simplification is maximum
 prop_max_simplify :: Expr -> Bool
-prop_max_simplify e = simplified == simplify simplified
-    where simplified = simplify e
+prop_max_simplify e = not $ containsJunk $ simplify e
 
 -- Part G
 
