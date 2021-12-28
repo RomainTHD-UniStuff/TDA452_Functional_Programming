@@ -174,13 +174,14 @@ simplifyAdd e1       e2                   = add e1 e2
 
 simplifyMul :: Expr -> Expr -> Expr
 -- Similar to the addition, but not enough to merge the two cases...
-simplifyMul (Num e1) (Num e2)            = num (e1 * e2)
-simplifyMul (Num 0)  e                   = num 0
-simplifyMul (Num 1)  e                   = e
-simplifyMul e        (Num n)             = simplifyMul (num n) e
-simplifyMul (Num n1) (Op Mul (Num n2) e) = simplifyMul (num (n1 * n2)) e
-simplifyMul e1       (Op Mul (Num n) e2) = simplifyMul (num n) (mul e1 e2)
-simplifyMul e1       e2                  = mul e1 e2
+simplifyMul (Num e1) (Num e2)                         = num (e1 * e2)
+simplifyMul (Num 0)  e                                = num 0
+simplifyMul (Num 1)  e                                = e
+simplifyMul e        (Num n)                          = simplifyMul (num n) e
+simplifyMul (Num n1) (Op Mul (Num n2) e)              = simplifyMul (num (n1 * n2)) e
+simplifyMul (Op Mul (Num n1) e1) (Op Mul (Num n2) e2) = simplifyMul (simplifyMul (num n1) (num n2)) (simplifyMul e1 e2)
+simplifyMul e1       (Op Mul (Num n) e2)              = simplifyMul (num n) (mul e1 e2)
+simplifyMul e1       e2                               = mul e1 e2
 
 -- Simplify a function
 simplifyFunc :: Func -> Expr -> Expr
@@ -193,7 +194,7 @@ simplifyFunc Cos e       = cos e
 basicSimplify :: Expr -> Expr
 basicSimplify (Num n)       = num n
 basicSimplify X             = x
-basicSimplify (Op op e1 e2) = simplifyOp op (basicSimplify e1) (basicSimplify e2)
+basicSimplify (Op op e1 e2) = assoc $ simplifyOp op (basicSimplify e1) (basicSimplify e2)
 basicSimplify (Func f e)    = simplifyFunc f (basicSimplify e)
 
 -- Simplify an expression
