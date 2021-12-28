@@ -1,5 +1,5 @@
 {- Lab 4B - Expr.hs
-   Date: 26/12/2021
+   Date: 28/12/2021
    Authors: Fanny Rouvel - Romain Theodet
    Lab group: 27
  -}
@@ -215,30 +215,27 @@ prop_simplify e x = if abs e1 < 1.0 then abs (e1 - e2) < eps else abs (abs(e1 / 
           e2 = eval (simplify e) x
           eps = if abs e1 > 1e18 then 1e-3 else 1e-5
 
--- Whether an expression is simplified or not, i.e. does not contains junk like `x + 0`
-containsJunkAdd :: Expr -> Expr -> Bool
-containsJunkAdd (Num _) (Num _)            = True -- `n + m`
-containsJunkAdd (Num 0) _                  = True -- `0 + e`
-containsJunkAdd _       (Num _)            = True -- Wrong order
-containsJunkAdd (Num _) (Op Add (Num _) _) = True -- `n + (m + e)`
-containsJunkAdd e1      e2                 = containsJunk e1 || containsJunk e2
+-- Helper function, checks whether an expression is a numeric or not
+isNumeric :: Expr -> Bool
+isNumeric (Num n) = True
+isNumeric e       = False
 
-containsJunkMul :: Expr -> Expr -> Bool
-containsJunkMul (Num _) (Num _)            = True
-containsJunkMul (Num 0)  _                 = True
-containsJunkMul (Num 1)  _                 = True
-containsJunkMul _       (Num _)            = True
-containsJunkMul (Num _) (Op Mul (Num _) _) = True
-containsJunkMul e1      e2                 = containsJunk e1 || containsJunk e2
+-- Checks whether an operation contains junks or not
+containsJunkOp :: Op -> Expr -> Expr -> Bool
+containsJunkOp _   (Num _) (Num _)            = True              -- `n + m` or `n * m`
+containsJunkOp _   (Num 0) _                  = True              -- `0 + e` or `0 * e`
+containsJunkOp Mul (Num 1) _                  = True              -- `1 * e`
+containsJunkOp _   e1      e2                 = containsJunk e1 || containsJunk e2
 
+-- Checks whether an expression contains junks or not
 containsJunk :: Expr -> Bool
-containsJunk (Op Mul e1 e2) = containsJunkMul e1 e2
-containsJunk (Op Add e1 e2) = containsJunkAdd e1 e2
-containsJunk (Func f e)     = containsJunk e
+containsJunk (Op op e1 e2) = containsJunkOp op e1 e2
+containsJunk (Func f e)    | isNumeric e = True
+                           | otherwise   = containsJunk e
 containsJunk (Num _)        = False
 containsJunk X              = False
 
--- checks that the simplification is maximum
+-- Property to check that there is no more remaining junks after simplifying an expression
 prop_max_simplify :: Expr -> Bool
 prop_max_simplify e = not $ containsJunk $ simplify e
 
