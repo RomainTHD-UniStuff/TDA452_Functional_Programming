@@ -138,8 +138,8 @@ assoc e                        = e
 arbExpr :: Int -> Gen Expr
 arbExpr s = frequency [(2, rUnit), (s, rBin s)]
     where rUnit  = frequency [(2, rNum), (2, rVar), (1, rFunc)]
-          -- Helps to generate readable numbers
-          rNum   = Num . fromIntegral <$> (arbitrary :: Gen Integer)
+          -- Generate readable numbers, keeps only 1 decimal
+          rNum   = Num . abs . (/ 10.0) . fromIntegral . floor . (* 10.0) <$> (arbitrary :: Gen Double)
           rVar   = return X
           rFunc  = do
               func <- elements [Sin, Cos]
@@ -220,7 +220,7 @@ prop_simplify :: Expr -> Double -> Bool
 prop_simplify e x = if abs e1 < 1.0 then abs (e1 - e2) < eps else abs (abs(e1 / e2) - 1.0) < eps
     where e1 = eval e x
           e2 = eval (simplify e) x
-          eps = if abs e1 > 1e18 then 1e-3 else 1e-5
+          eps = if abs e1 > 1e12 || size e > 16 then 1e-3 else 1e-5
 
 -- Helper function, checks whether an expression is a numeric or not
 isNumeric :: Expr -> Bool
