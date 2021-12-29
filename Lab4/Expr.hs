@@ -168,6 +168,8 @@ simplifyAdd (Num 0)  e                    = e
 simplifyAdd e        (Num n)              = simplifyAdd (num n) e
 -- add numbers in nested additions, n1 + (n2 + e) = (n1 + n2) + e
 simplifyAdd (Num n1) (Op Add (Num n2) e)  = simplifyAdd (num (n1 + n2)) e
+-- pull numbers out of two additions and add it, (n1 + e1) + (n2 + e2) = (n1 + n2) + (e1 + e2)
+simplifyAdd (Op Add (Num n1) e1) (Op Add (Num n2) e2) = simplifyAdd (simplifyAdd (num n1) (num n2)) (simplifyAdd e1 e2)
 -- pull numbers out of nested additions, e1 + (n + e2) = n + (e1 + e2)
 simplifyAdd e1       (Op Add (Num n) e2)  = simplifyAdd (num n) (add e1 e2)
 simplifyAdd e1       e2                   = add e1 e2
@@ -183,7 +185,7 @@ simplifyMul (Num 1)  e                                = e
 simplifyMul e        (Num n)                          = simplifyMul (num n) e
 -- add numbers in nested multiplication, n1 * (n2 * e) = (n1 * n2) * e
 simplifyMul (Num n1) (Op Mul (Num n2) e)              = simplifyMul (num (n1 * n2)) e
--- FIXME: Why this line ?
+-- pull numbers out of two multiplications and multiply it, (n1 * e1) * (n2 * e2) = (n1 * n2) * (e1 * e2)
 simplifyMul (Op Mul (Num n1) e1) (Op Mul (Num n2) e2) = simplifyMul (simplifyMul (num n1) (num n2)) (simplifyMul e1 e2)
 -- pull numbers out of nested multiplications, e1 * (n * e2) = n * (e1 * e2)
 simplifyMul e1       (Op Mul (Num n) e2)              = simplifyMul (num n) (mul e1 e2)
@@ -229,10 +231,13 @@ isNumeric e       = False
 
 -- Checks whether an operation contains junks or not
 containsJunkOp :: Op -> Expr -> Expr -> Bool
-containsJunkOp _   (Num _) (Num _)            = True              -- `n + m` or `n * m`
-containsJunkOp _   (Num 0) _                  = True              -- `0 + e` or `0 * e`
-containsJunkOp Mul (Num 1) _                  = True              -- `1 * e`
-containsJunkOp _   e1      e2                 = containsJunk e1 || containsJunk e2
+containsJunkOp _   (Num _) (Num _)  = True     -- `n + m` or `n * m`
+containsJunkOp _   (Num 0) _        = True     -- `0 + e` or `0 * e`
+containsJunkOp Mul (Num 1) _        = True     -- `1 * e`
+containsJunkOp _   _       (Num _)  = True     -- `e * 1` or `e + 2`
+containsJunkOp op1 (Num _) (Op op2 (Num _) _)
+    | op1 == op2                    = True     -- `1 + (2 + e)` or `1 * (2 * e)`
+containsJunkOp _   e1      e2       = containsJunk e1 || containsJunk e2
 
 -- Checks whether an expression contains junks or not
 containsJunk :: Expr -> Bool
