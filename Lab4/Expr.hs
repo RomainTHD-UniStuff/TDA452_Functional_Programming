@@ -173,13 +173,19 @@ simplifyAdd e1       (Op Add (Num n) e2)  = simplifyAdd (num n) (add e1 e2)
 simplifyAdd e1       e2                   = add e1 e2
 
 simplifyMul :: Expr -> Expr -> Expr
--- Similar to the addition, but not enough to merge the two cases...
+-- basic numbers, n1 * n2 = n1 * n2
 simplifyMul (Num e1) (Num e2)                         = num (e1 * e2)
+-- absorbing element, 0 * e = 0
 simplifyMul (Num 0)  e                                = num 0
+-- identity, 1 * e = e
 simplifyMul (Num 1)  e                                = e
+-- pull numbers to the left, e * n = n * e
 simplifyMul e        (Num n)                          = simplifyMul (num n) e
+-- add numbers in nested multiplication, n1 * (n2 * e) = (n1 * n2) * e
 simplifyMul (Num n1) (Op Mul (Num n2) e)              = simplifyMul (num (n1 * n2)) e
+-- FIXME: Why this line ?
 simplifyMul (Op Mul (Num n1) e1) (Op Mul (Num n2) e2) = simplifyMul (simplifyMul (num n1) (num n2)) (simplifyMul e1 e2)
+-- pull numbers out of nested multiplications, e1 * (n * e2) = n * (e1 * e2)
 simplifyMul e1       (Op Mul (Num n) e2)              = simplifyMul (num n) (mul e1 e2)
 simplifyMul e1       e2                               = mul e1 e2
 
