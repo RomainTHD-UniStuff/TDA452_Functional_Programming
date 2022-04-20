@@ -1,6 +1,6 @@
 {- Lab 4B - Calculator.hs
    Date: 08/12/2021
-   Authors: Fanny Rouvel - Romain Theodet
+   Authors: *Redacted due to web crawlers*
    Lab group: 27
  -}
 
@@ -46,7 +46,7 @@ setup window = do
   getBody window # set style [("backgroundColor","lightblue"),
                               ("textAlign","center")]
   pure input # set style [("fontSize","14pt")]
-  
+
   -- Interaction (install event handlers)
 
   -- Reset the slider, the formula input and the "canvas"
@@ -85,17 +85,17 @@ resetSlider slider zoomV = do
   updateSliderValue slider zoomV
   pure slider # set style [("cursor","not-allowed"), ("pointer-events", "none")]
 
--- Get the slider value divided by the sliderFactor 
+-- Get the slider value divided by the sliderFactor
 getSliderValue :: Element -> UI Double
 getSliderValue slider = (/doubleFactor) . read <$> get value slider
-  where doubleFactor = fromIntegral sliderFactor 
+  where doubleFactor = fromIntegral sliderFactor
 
 -- Update the zoomV label with the current value of the slider
 updateSliderValue :: Element -> Element -> UI Element
 updateSliderValue slider zoomV = do
   value <- getSliderValue slider
   let formatValue = 'x' : show value
-  pure zoomV # set UI.html formatValue 
+  pure zoomV # set UI.html formatValue
 
 -- Clear the given "canvas" and print the x-axis and y-axis
 resetCanvas :: Canvas -> UI()
@@ -133,7 +133,7 @@ printCanvas scale input canvas slider = do
       path "blue" (points exp scale (canWidth, canHeight)) canvas
       pure slider # set style [("cursor","pointer"), ("pointer-events", "auto")]
       return ()
-    Nothing -> 
+    Nothing ->
       UI.fillText "Invalid formula" (5, canHeight-5) canvas
 
 -- Reset a zoom slider and read and draw the expression from the given input

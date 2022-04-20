@@ -1,6 +1,6 @@
 {- Lab 3
    Date: 22/11/2021
-   Authors: Fanny Rouvel - Romain Theodet
+   Authors: *Redacted due to web crawlers*
    Lab group: 27
  -}
 

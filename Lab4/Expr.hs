@@ -1,6 +1,6 @@
 {- Lab 4B - Expr.hs
    Date: 28/12/2021
-   Authors: Fanny Rouvel - Romain Theodet
+   Authors: *Redacted due to web crawlers*
    Lab group: 27
  -}
 
